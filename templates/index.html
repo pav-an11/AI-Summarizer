@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Summarizer</title>
+    <style>
+        body { 
+            font-family: Arial; 
+            max-width: 800px; 
+            margin: 50px auto; 
+            padding: 30px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .main-card { 
+            background: rgba(255,255,255,0.1); 
+            padding: 40px; 
+            border-radius: 20px; 
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        h1 { text-align: center; margin-bottom: 10px; }
+        .subtitle { text-align: center; opacity: 0.9; margin-bottom: 40px; }
+        
+        /* SINGLE INPUT */
+        .input-section { margin-bottom: 25px; }
+        .input-box { 
+            width: 100%; 
+            padding: 20px; 
+            font-size: 18px; 
+            border: none; 
+            border-radius: 15px; 
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        .file-input-wrapper { 
+            position: relative; 
+            display: block; 
+            margin-bottom: 20px;
+        }
+        .file-input { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+        .file-label { 
+            display: block; 
+            padding: 20px; 
+            background: rgba(255,255,255,0.2); 
+            color: white; 
+            text-align: center; 
+            border-radius: 15px; 
+            cursor: pointer; 
+            transition: background 0.3s;
+        }
+        .file-label:hover { background: rgba(255,255,255,0.3); }
+        
+        .analyze-btn { 
+            width: 100%; 
+            padding: 20px; 
+            font-size: 18px; 
+            background: #ff6b6b; 
+            color: white; 
+            border: none; 
+            border-radius: 15px; 
+            cursor: pointer; 
+            font-weight: bold;
+        }
+        .analyze-btn:hover { background: #ff5252; }
+        .analyze-btn:disabled { background: #666; cursor: not-allowed; }
+        
+        .output { 
+            margin-top: 30px; 
+            padding: 25px; 
+            border-radius: 15px; 
+            min-height: 150px;
+            background: rgba(255,255,255,0.15);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s;
+        }
+        .output.show { opacity: 1; transform: translateY(0); }
+        .output.success { background: rgba(76, 175, 80, 0.3); }
+        .output.error { background: rgba(244, 67, 54, 0.3); }
+        
+        .summary-text { 
+            white-space: pre-wrap; 
+            line-height: 1.6; 
+            font-size: 16px;
+        }
+        .loading { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 18px;
+            color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-card">
+        <h1>🎯 AI Summarizer</h1>
+        <p class="subtitle">Upload PDF or paste YouTube URL → ONE BUTTON → Magic Summary!</p>
+        
+        <form id="mainForm">
+            <!-- URL INPUT (for YouTube) -->
+            <div class="input-section">
+                <input type="url" id="urlInput" class="input-box" placeholder="📺 Paste YouTube URL (https://youtube.com/watch?v=...)">
+            </div>
+            
+            <!-- FILE INPUT (for PDF) -->
+            <div class="file-input-wrapper">
+                <input type="file" name="file" id="fileInput" class="file-input" accept=".pdf">
+                <label for="fileInput" class="file-label">
+                    📄 OR upload PDF file here
+                </label>
+            </div>
+            
+            <!-- ONE BUTTON FOR BOTH -->
+            <button type="submit" class="analyze-btn" id="analyzeBtn">
+                ✨ ANALYZE CONTENT
+            </button>
+        </form>
+        
+        <!-- SINGLE OUTPUT AREA -->
+        <div id="mainOutput" class="output"></div>
+    </div>
+
+    <script>
+        document.getElementById("mainForm").onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const url = document.getElementById("urlInput").value.trim();
+            const fileInput = document.getElementById("fileInput");
+            const file = fileInput.files[0];
+            const btn = document.getElementById("analyzeBtn");
+            const output = document.getElementById("mainOutput");
+            
+            // Show loading
+            output.className = "output loading show";
+            output.innerHTML = '<div class="loading">🔄 Analyzing your content...</div>';
+            btn.disabled = true;
+            btn.textContent = "⏳ Processing...";
+            
+            try {
+                if (file && file.name.endsWith('.pdf')) {
+                    // PDF
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    const res = await fetch("/summarize-pdf", { method: "POST", body: formData });
+                    const data = await res.json();
+                    
+                    output.className = data.error ? "output error show" : "output success show";
+                    output.innerHTML = data.error 
+                        ? `<div class="summary-text">❌ ${data.error}</div>`
+                        : `<div class="summary-text">✅ ${data.summary}</div>`;
+                } else if (url) {
+                    // YouTube
+                    const res = await fetch("/summarize-youtube", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ url })
+                    });
+                    const data = await res.json();
+                    
+                    output.className = data.error ? "output error show" : "output success show";
+                    output.innerHTML = data.error 
+                        ? `<div class="summary-text">❌ ${data.error}</div>`
+                        : `<div class="summary-text">✅ ${data.summary}</div>`;
+                } else {
+                    output.className = "output error show";
+                    output.innerHTML = '<div class="summary-text">❌ Please upload PDF OR paste YouTube URL</div>';
+                }
+            } catch(e) {
+                output.className = "output error show";
+                output.innerHTML = '<div class="summary-text">❌ Network error - check connection</div>';
+            }
+            
+            btn.disabled = false;
+            btn.textContent = "✨ ANALYZE CONTENT";
+        };
+    </script>
+</body>
+</html>
