@@ -3,7 +3,9 @@ import PyPDF2
 from youtube_transcript_api import YouTubeTranscriptApi
 import re
 
-app = Flask(__name__)
+app = Flask(__name__, 
+            template_folder='templates',
+            static_folder='static')
 
 def smart_summary(text):
     """Create REAL bullet point summary from extracted text"""
@@ -106,6 +108,5 @@ def summarize_youtube():
         return jsonify({"error": f"Error processing video: {str(e)}"})
 
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))  # ADD THIS LINE
-    app.run(host='0.0.0.0', port=port, debug=False)
-
+    print("🚀 AI Summarizer (Real Content) - http://localhost:5001")
+    app.run(debug=True, port=5001)
